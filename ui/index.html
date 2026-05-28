@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice Agent</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="header-left">
+        <span class="logo">◎ Voice Agent</span>
+        <span id="status-badge" class="badge badge--idle">Idle</span>
+      </div>
+      <button id="settings-btn" class="icon-btn" title="Settings">⚙</button>
+    </header>
+
+    <!-- Loading bar -->
+    <div id="loading-bar" class="loading-bar hidden">
+      <div id="loading-fill" class="loading-fill"></div>
+      <span id="loading-label" class="loading-label">Loading…</span>
+    </div>
+
+    <!-- Mic level bar (visible when listening) -->
+    <div id="mic-bar" class="mic-bar hidden">
+      <div id="mic-bar-fill" class="mic-bar-fill"></div>
+      <div id="mic-bar-threshold" class="mic-bar-threshold"></div>
+    </div>
+
+    <!-- Main content -->
+    <main>
+      <div id="conversation" class="conversation"></div>
+
+      <!-- Live panels -->
+      <div id="live-area" class="live-area hidden">
+        <div class="live-panel live-panel--user">
+          <label>You</label>
+          <p id="live-transcript" class="live-text"></p>
+        </div>
+        <div class="live-panel live-panel--agent">
+          <label>Agent</label>
+          <p id="live-response" class="live-text"></p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Talk button -->
+    <footer>
+      <button id="talk-btn" class="talk-btn" disabled>
+        <span class="talk-icon">🎤</span>
+        <span id="talk-label">Loading…</span>
+      </button>
+      <button id="clear-btn" class="icon-btn" title="Clear history">🗑</button>
+    </footer>
+
+    <!-- Settings drawer -->
+    <aside id="settings-drawer" class="settings-drawer hidden">
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button id="settings-close" class="icon-btn">✕</button>
+      </div>
+      <div class="settings-body">
+        <section>
+          <h3>LLM</h3>
+          <label>API Key
+            <input id="cfg-apiKey" type="password" placeholder="sk-..." />
+          </label>
+          <label>Base URL
+            <input id="cfg-baseURL" type="url" placeholder="https://api.openai.com/v1" />
+          </label>
+          <label>Model
+            <input id="cfg-model" type="text" value="gpt-4o" />
+          </label>
+          <label>System Prompt
+            <textarea id="cfg-systemPrompt" rows="5">You are a helpful voice assistant. Respond naturally and conversationally, as if speaking aloud. Match your response length to the question: brief and direct for simple questions, thorough when the topic warrants it. Never use markdown, bullet points, numbered lists, code blocks, or special symbols — speak in plain, complete sentences the way a knowledgeable friend would explain something.</textarea>
+          </label>
+          <label>Temperature
+            <input id="cfg-temperature" type="number" min="0" max="2" step="0.1" value="0.7" />
+          </label>
+          <label>Max Tokens
+            <input id="cfg-maxTokens" type="number" min="64" max="4096" step="64" value="512" />
+          </label>
+        </section>
+
+        <section>
+          <h3>TTS (Kokoro)</h3>
+          <label>Voice
+            <select id="cfg-voice">
+              <option value="af_heart">af_heart</option>
+              <option value="af_bella">af_bella</option>
+              <option value="af_sarah">af_sarah</option>
+              <option value="am_adam">am_adam</option>
+              <option value="am_michael">am_michael</option>
+              <option value="bf_emma">bf_emma</option>
+              <option value="bm_george">bm_george</option>
+            </select>
+          </label>
+          <label>Speed
+            <input id="cfg-speed" type="number" min="0.5" max="2" step="0.1" value="1.0" />
+          </label>
+        </section>
+
+        <section>
+          <h3>STT (Moonshine)</h3>
+          <label>Model
+            <select id="cfg-sttModel">
+              <option value="moonshine/tiny">Tiny (faster)</option>
+              <option value="moonshine/base">Base (accurate)</option>
+            </select>
+          </label>
+        </section>
+
+        <section>
+          <h3>Voice Activity Detection</h3>
+          <label>Mic threshold (0–1)
+            <input id="cfg-vadThreshold" type="number" min="0.005" max="0.5" step="0.005" value="0.02" />
+          </label>
+          <label>Spike filter — ms above threshold before speech is detected
+            <input id="cfg-vadOnset" type="number" min="0" max="2000" step="50" value="300" />
+          </label>
+          <label>Silence timeout (seconds)
+            <input id="cfg-vadSilence" type="number" min="1" max="30" step="0.5" value="7" />
+          </label>
+        </section>
+
+        <button id="apply-settings" class="apply-btn">Apply</button>
+      </div>
+    </aside>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
