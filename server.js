@@ -15,7 +15,7 @@ app.use((_req, res, next) => {
 });
 
 // LLM proxy — avoids CORS when the browser calls external AI APIs
-app.all('/api/llm/*', (req, res) => {
+app.all('/api/llm/*splat', (req, res) => {
   // Strip the mount prefix so proxyLLM sees the subpath in req.url
   req.url = req.url.replace(/^\/api\/llm/, '') || '/';
   proxyLLM(req, res);
@@ -25,7 +25,7 @@ app.use(express.static(join(__dirname, 'ui')));
 app.use('/src', express.static(join(__dirname, 'src')));
 app.use('/node_modules', express.static(join(__dirname, 'node_modules')));
 
-app.get('*', (_req, res) => {
+app.get('/*splat', (_req, res) => {
   res.sendFile(join(__dirname, 'ui', 'index.html'));
 });
 
