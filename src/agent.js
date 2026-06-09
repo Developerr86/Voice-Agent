@@ -1,5 +1,5 @@
 import { MoonshineSTT } from './stt/moonshine.js';
-import { KokoroTTSWrapper, playAudio } from './tts/kokoro.js';
+import { KokoroTTSWrapper } from './tts/kokoro.js';
 import { OpenAILLM } from './llm/openai.js';
 import { MicLevelMonitor } from './vad.js';
 
@@ -51,8 +51,14 @@ export class VoiceAgent extends EventEmitter {
     this._stt.onPartial((text) => this.emit('partial', text));
     this._stt.onTranscript((text) => {
       if (!text.trim()) return;
-      this._pendingTranscript += (this._pendingTranscript ? ' ' : '') + text;
-      this.emit('transcript', this._pendingTranscript);
+      // Single handler that branches on VAD presence (#2)
+      if (this._vad) {
+        this._pendingTranscript += (this._pendingTranscript ? ' ' : '') + text;
+        this.emit('transcript', this._pendingTranscript);
+      } else {
+        this.emit('transcript', text);
+        this._respond(text);
+      }
     });
 
     await this._stt.start();
@@ -90,11 +96,8 @@ export class VoiceAgent extends EventEmitter {
       // is sent to the LLM immediately).
       console.warn('[agent] VAD unavailable, falling back to commit-driven mode:', err.message);
       this._vad = null;
-      this._stt.onTranscript((text) => {
-        if (!text.trim()) return;
-        this.emit('transcript', text);
-        this._respond(text);
-      });
+      // No need to re-register onTranscript — the single handler above
+      // already branches on this._vad presence (#2)
     }
 
     this.emit('ready');
@@ -116,6 +119,7 @@ export class VoiceAgent extends EventEmitter {
       this._respondAbort.abort();
       this._respondAbort = null;
     }
+    this._tts.stopAudio(); // Use instance method (#4)
     this._processing = false;
     this.emit('interrupted');
   }
@@ -149,7 +153,7 @@ export class VoiceAgent extends EventEmitter {
       for await (const { audio } of audioStream) {
         if (ac.signal.aborted) break;
         this.emit('synthesizing');
-        await playAudio(audio, ac.signal);
+        await this._tts.playAudio(audio, ac.signal); // Instance method (#4)
       }
 
       try { await pump; } catch {} // pump may reject if aborted

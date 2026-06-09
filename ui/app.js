@@ -25,6 +25,7 @@ let agent = null;
 let listening = false;
 let currentResponse = '';
 let currentVadThreshold = 0.02; // kept in sync with config so the level handler is always current
+let booted = false; // Track whether the agent has been booted (#7)
 
 // Display scale for the mic bar: levels above MAX_DISPLAY pin to 100%.
 const MIC_MAX = 0.1;
@@ -271,19 +272,21 @@ async function bootAgent() {
 
   try {
     await agent.start();
+    booted = true;
   } catch (err) {
     console.error('Failed to start agent:', err);
     setStatus('Error', 'idle');
     hideLoading();
     talkBtn.disabled = false;
     talkLabel.textContent = 'Retry';
+    // Reset agent so retry recreates it (#7)
+    agent = null;
+    booted = false;
   }
 }
 
 // ── Talk button ───────────────────────────────────────────────────────────────
 talkBtn.addEventListener('click', async () => {
-  if (!agent) return;
-
   if (!listening) {
     listening = true;
     talkBtn.classList.add('active');
@@ -292,7 +295,19 @@ talkBtn.addEventListener('click', async () => {
     showMicBar(readConfig().vad.threshold);
     setStatus('Listening…', 'listening');
 
-    if (!agent._running) {
+    // If agent hasn't been booted or failed, (re)create and start it (#7)
+    if (!agent || !booted) {
+      try {
+        await bootAgent();
+        if (!agent) return; // bootAgent failed
+      } catch (err) {
+        console.error(err);
+        listening = false;
+        talkBtn.classList.remove('active');
+        talkLabel.textContent = 'Retry';
+        return;
+      }
+    } else if (!agent._running) {
       try {
         await agent.start();
       } catch (err) {
@@ -300,11 +315,11 @@ talkBtn.addEventListener('click', async () => {
         agent.emit('error', err);
         listening = false;
         talkBtn.classList.remove('active');
-        talkLabel.textContent = 'Start Listening';
+        talkLabel.textContent = 'Retry';
       }
     }
   } else {
-    agent.stop();
+    if (agent) agent.stop();
   }
 });
 
@@ -344,4 +359,6 @@ apiKeyInput.addEventListener('input', () => {
   if (apiKeyInput.value.trim()) settingsBtn.classList.remove('needs-config');
 }, { once: true });
 
-bootAgent();
+// Defer initial boot to the Talk button (#7) — avoids duplicate start() calls.
+// The user clicks 'Start Listening' to begin, which handles both initial boot
+// and subsequent restarts cleanly.

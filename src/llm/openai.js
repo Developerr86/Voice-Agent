@@ -16,6 +16,7 @@ export class OpenAILLM {
     this.systemPrompt  = config.systemPrompt || _env.LLM_SYSTEM_PROMPT || DEFAULT_SYSTEM_PROMPT;
     this.temperature   = config.temperature  ?? 0.7;
     this.maxTokens     = config.maxTokens    || 512;
+    this.maxTurns      = config.maxTurns     || 50; // Cap history to prevent unbounded growth (#5)
     this.history = [];
 
     this._apiKey  = config.apiKey  || _env.LLM_API_KEY  || '';
@@ -51,7 +52,13 @@ export class OpenAILLM {
     if (!this._apiKey) {
       throw new Error('No API key set. Open Settings (⚙) and enter your API key.');
     }
-    this.history.push({ role: 'user', content: userMessage });
+    const userEntry = { role: 'user', content: userMessage };
+    this.history.push(userEntry);
+
+    // Trim history to stay within maxTurns (#5)
+    while (this.history.length > this.maxTurns * 2) {
+      this.history.shift();
+    }
 
     const stream = await this._client.chat.completions.create({
       model:       this.model,
@@ -75,8 +82,9 @@ export class OpenAILLM {
       if (fullResponse) {
         this.history.push({ role: 'assistant', content: fullResponse });
       } else {
-        // Interrupted before any response — remove user turn to keep history clean.
-        this.history.pop();
+        // Remove the specific user entry by reference instead of blind pop() (#6)
+        const idx = this.history.indexOf(userEntry);
+        if (idx !== -1) this.history.splice(idx, 1);
       }
     }
   }
@@ -90,6 +98,7 @@ export class OpenAILLM {
     if (config.systemPrompt !== undefined) this.systemPrompt = config.systemPrompt;
     if (config.temperature  !== undefined) this.temperature  = config.temperature;
     if (config.maxTokens    !== undefined) this.maxTokens    = config.maxTokens;
+    if (config.maxTurns     !== undefined) this.maxTurns     = config.maxTurns;
     if (config.apiKey       !== undefined) this._apiKey      = config.apiKey;
     if (config.baseURL      !== undefined) this._baseURL     = config.baseURL || undefined;
     if (config.apiKey !== undefined || config.baseURL !== undefined) {
